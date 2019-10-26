@@ -1,5 +1,6 @@
 # NixieClock
  NixieClock 1.0 for Fatsun.
+ 
  这个程序运行在NixieClock 1.0上，此版本的辉光钟拥有6个前苏联产IN-14辉光管，
  使用了Nixie Clock Home严泽远的辉光管升压模块为辉光管供电，
  DS1302的RTC Module用于精确走时。
