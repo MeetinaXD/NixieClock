@@ -1,10 +1,10 @@
 /*
 	Author 		: 	MeetinaXD
 					(meetinaxd@ltiex.com)
-	Last Edit 	: 	Octo 26,2019. 10:43 (UTC + 08)
+	Last Edit 	: 	Octo 27,2019. 20:09 (UTC + 08)
 	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
 	Modify Logs	:	
-					* 
+					* Octo 27,20:09, 增加防中毒和看门狗功能 
 					*
 					*
 	WARNING:
@@ -31,8 +31,8 @@ byte Data[3] = {69,69,69};//45 45 45
 
 byte Date[6] = {19,7,30,15,26,0};//日期时间储存变量
 // const byte LoveDateTime[6] = {19,3,14,17,0,0};//日期时间储存变量
-// DateTime LoveDateTime (2019,3,14,17,43,00);
-DateTime LoveDateTime (2019,1,14,18,35,00);
+
+DateTime NextRefreshTime;
 byte state = 0;		//开关功能选择
 byte old_state = 0; //上一个开关状态
 
@@ -40,8 +40,6 @@ bool change = true;//世界线是否产生变动
 
 /* 0.息屏 1.时间 2.计时 3.世界线 */
 void (*funcList[4])(void) = {showNothing,showTime,showCounter,showWorldChange};
-
-void wakeISR();
 
 void setup() {
 	DDRC = 0xFF;
@@ -67,20 +65,26 @@ void setup() {
 	digitalWrite(SHCPB,HIGH);
 	digitalWrite(SHCPC,HIGH);
 
+	/* isrunnning方法存在问题，每次编译后首次运行都返回true，已经弃用。 */
+
 	// if (!RTC.isrunning()){//如果DS1302模块没有在运行
 	// 	/* 设置为编译时的时间 */
 	// 	RTC.adjust(DateTime(__DATE__, __TIME__));
 	// }
 
+	/* 开启看门狗，8秒无响应后重启机器 */
+	wdt_enable(WDTO_8S);
 	randomSeed(RTC.now().unixtime());
-	startingEffect();
+	startingEffect(); //展示开机效果
 }
 
 void loop(){
 	// state = 1;
 	state = (digitalRead(BUTTONA) << 1) | digitalRead(BUTTONB);
 	funcList[state]();
-	// wdt_reset();//喂狗
+	if(isOverTime())	//是否已经到刷新时间
+		refreshNixie();
+	wdt_reset();//记得喂狗
 }
 
 /* 取位操作，最多八位 */
@@ -152,6 +156,32 @@ void sendData(){
 	refresh();
 }
 
+/* 是否已经超时 */
+
+bool isOverTime(){
+	long now_t = RTC.now().get();
+	if (now_t >= NextRefreshTime.get()){ //已经超时
+		return true;
+	}
+	return false;
+}
+
+/* 辉光管防中毒,刷新辉光管 */
+
+void refreshNixie(){
+	/*
+		1.闪烁所有的辉光管
+		2.同时轮转所有的辉光管
+	*/
+	for (int i = 0; i < 6; ++i)
+		simulateFlash(0x3F,0); //闪烁所有辉光管
+
+	for (int i = 0; i < 6; ++i)
+		roundNixie(0x3F,3); //轮转所有的辉光管，3圈。
+	//更新下次刷新时间
+	NextRefreshTime = DateTime(RTC.now().get() + __OVER_TIME__);
+}
+
 /* 显示世界线变动 */
 
 void showWorldChange(){
@@ -176,14 +206,14 @@ void showWorldChange(){
 		lightUpNixie(0);
 		setNixie(0,random(0,1));
 		roundNixie(1,2);
-		for (int i = 0; i < 10; i++){
+		for (int i = 0; i < 10; i++){ //小数点快闪
 			lightUpPoint(0);
 			delay(100);
 			closeDownPoint();
 			delay(100);
 		}
 		byte NixieTube = 0;
-		for (byte i = 1; i < 6; i++){
+		for (byte i = 1; i < 6; i++){ //点亮辉光管，设置随机数后开始轮转
 			NixieTube = 1 << i;
 			lightUpNixie(i);
 			setNixie(i,random(0,9)&0xF);
@@ -193,11 +223,12 @@ void showWorldChange(){
 		change = false;
 	}
 	/* 随机频闪 */
-	if (random(1,64) == 4){//世界线变动
+	if (random(1,64) == 4){ //世界线变动
 		change = true;
 		return;
 	}
-	if (random(1,20) == 5) simulateFlash(0x3F,0); //模拟闪烁效果
+	if (random(1,32) == 5)
+		simulateFlash(0x3F,0); //模拟闪烁效果（所有辉光管）
 	if (random(1,64) == 6){//世界线不稳定
 		for (int i = 0; i < 6; i++){
 			old_bits[i] = bits[i];

@@ -1,3 +1,24 @@
+/*
+	Author 		: 	MeetinaXD
+					(meetinaxd@ltiex.com)
+	Last Edit 	: 	Octo 27,2019. 20:09 (UTC + 08)
+	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
+	Modify Logs	:	
+					* Octo 27,20:09, 增加防中毒和看门狗功能
+					*
+					*
+	WARNING:
+		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
+		ALLOW TO REDISTRIBUTE IT AND/OR MODIFY IT FOR 
+		PROFIT WITHOUT AUTHOR'S PERMISSION.
+
+		IF YOU ARE PERSONAL USE,NOT FOR PARTICULAR PURPOSE,
+		YOU CAN USE BUT YOU SHOULD ACCEPT THE GNU LESSER 
+		GENERAL PUBLIC LICENSE,AND COPY THIS LICENSE ALONG 
+		WITH THIS PROGRAM.
+		************** ALL RIGHTS RESERVED. **************
+*/
+
 #ifndef __NIXCK__HEADER__
 #define __NIXCK__HEADER__
 #if (ARDUINO >= 100)
@@ -8,8 +29,10 @@
 
 #include <stdbool.h>
 #include <Wire.h>
-#include <avr/wdt.h>
+#include <avr/wdt.h> /* 看门狗 */
 #include "RTClib.h"
+
+#define __OVER_TIME__ 300 //定义辉光钟防中毒的刷新时间，单位为秒
 
 // ******** definition for 74HC595N tube ********
 #define DSA 5
@@ -47,8 +70,11 @@ void showCounter();		//function : 显示计时
 void showWorldChange(); //function : 显示世界线变动
 
 void startingEffect();	//开机动画
-void simulateFlash(byte i,byte level);//模拟闪烁
-void roundNixie(byte NixieTube,byte round);
+void simulateFlash(byte i,byte level);	//模拟闪烁
+void roundNixie(byte NixieTube,byte round);	//轮转辉光管
+
+bool isOverTime();		//判断是否已经超时
+void refreshNixie();	//刷新所有辉光管(防止辉光管中毒)
 
 void sendData();		//发送数据到74HC595N译码器
 void refresh();			//74HC595N译码器STCP引脚上升沿，输出使能
@@ -74,6 +100,10 @@ const byte LoveDate[6] = {1,9,0,3,1,4};
 const byte simulateTime[2][10] = {
 									{150,200,90,100,40,60,20,20,10,10},
 									{150,200,90,100,40,60,20,20,10,10}
-								};
-
+								}; /*两种不同速度的闪烁效果，是可以支持无限多种预设的
+									但是我太懒了，只研究了一种。
+									在simulateFlash()中，level即是这个数组的下标。
+									*/
+// const DateTime LoveDateTime (2019,3,14,17,43,00);								
+const DateTime LoveDateTime (2019,1,14,18,35,00);
 #endif/* __NIXCK__HEADER__ */
