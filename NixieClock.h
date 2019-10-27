@@ -32,7 +32,7 @@
 #include <avr/wdt.h> /* 看门狗 */
 #include "RTClib.h"
 
-#define __OVER_TIME__ 300 //定义辉光钟防中毒的刷新时间，单位为秒
+#define __OVER_TIME__ 30 //定义辉光钟防中毒的刷新时间，单位为秒
 
 // ******** definition for 74HC595N tube ********
 #define DSA 5

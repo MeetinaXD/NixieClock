@@ -159,8 +159,8 @@ void sendData(){
 /* 是否已经超时 */
 
 bool isOverTime(){
-	long now_t = RTC.now().get();
-	if (now_t >= NextRefreshTime.get()){ //已经超时
+	TimeSpan gap = LoveDateTime - RTC.now();
+	if (gap.totalseconds() >= 0){ //已经超时
 		return true;
 	}
 	return false;
@@ -179,7 +179,7 @@ void refreshNixie(){
 	for (int i = 0; i < 6; ++i)
 		roundNixie(0x3F,3); //轮转所有的辉光管，3圈。
 	//更新下次刷新时间
-	NextRefreshTime = DateTime(RTC.now().get() + __OVER_TIME__);
+	NextRefreshTime = RTC.now() + TimeSpan(__OVER_TIME__);
 }
 
 /* 显示世界线变动 */
