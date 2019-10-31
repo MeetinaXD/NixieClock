@@ -5,7 +5,7 @@
 	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
 	Modify Logs	:	
 					* Octo 27,20:09, 增加防中毒和看门狗功能 
-					*
+					* Octo 31,14:28, 修改isOverTime中的错误；更改喂狗次序，修复一开机为功能3时导致重启的问题
 					*
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
@@ -76,15 +76,18 @@ void setup() {
 	wdt_enable(WDTO_8S);
 	randomSeed(RTC.now().unixtime());
 	startingEffect(); //展示开机效果
+	NextRefreshTime = RTC.now() + TimeSpan(__OVER_TIME__);
 }
 
 void loop(){
 	// state = 1;
+	//要先喂狗，否则世界线变动会重启
+	wdt_reset();//记得喂狗
 	state = (digitalRead(BUTTONA) << 1) | digitalRead(BUTTONB);
 	funcList[state]();
 	if(isOverTime())	//是否已经到刷新时间
 		refreshNixie();
-	wdt_reset();//记得喂狗
+	
 }
 
 /* 取位操作，最多八位 */
@@ -159,8 +162,8 @@ void sendData(){
 /* 是否已经超时 */
 
 bool isOverTime(){
-	TimeSpan gap = LoveDateTime - RTC.now();
-	if (gap.totalseconds() >= 0){ //已经超时
+	TimeSpan gap = NextRefreshTime - RTC.now();
+	if (gap.totalseconds() < 0){ //已经超时
 		return true;
 	}
 	return false;
@@ -173,11 +176,8 @@ void refreshNixie(){
 		1.闪烁所有的辉光管
 		2.同时轮转所有的辉光管
 	*/
-	for (int i = 0; i < 6; ++i)
-		simulateFlash(0x3F,0); //闪烁所有辉光管
-
-	for (int i = 0; i < 6; ++i)
-		roundNixie(0x3F,3); //轮转所有的辉光管，3圈。
+	simulateFlash(0x3F,0); //闪烁所有辉光管
+	roundNixie(0x3F,2); //轮转所有的辉光管，2圈。
 	//更新下次刷新时间
 	NextRefreshTime = RTC.now() + TimeSpan(__OVER_TIME__);
 }

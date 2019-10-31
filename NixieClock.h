@@ -5,7 +5,7 @@
 	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
 	Modify Logs	:	
 					* Octo 27,20:09, 增加防中毒和看门狗功能
-					*
+					* Octo 31,14:28, 修改isOverTime中的错误；更改喂狗次序，修复一开机为功能3时导致重启的问题
 					*
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
@@ -32,7 +32,8 @@
 #include <avr/wdt.h> /* 看门狗 */
 #include "RTClib.h"
 
-#define __OVER_TIME__ 30 //定义辉光钟防中毒的刷新时间，单位为秒
+//定义辉光钟防中毒的刷新时间，单位为秒
+#define __OVER_TIME__ 300 //五分钟刷新一次
 
 // ******** definition for 74HC595N tube ********
 #define DSA 5
