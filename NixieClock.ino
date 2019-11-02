@@ -6,7 +6,7 @@
 	Modify Logs	:	
 					* Octo 27,20:09, 增加防中毒和看门狗功能 
 					* Octo 31,14:28, 修改isOverTime中的错误；更改喂狗次序，修复一开机为功能3时导致重启的问题
-					*
+					* Nove 2 ,18:15, 修改了开始动画的逻辑，必须选择功能后才出现，修改了防中毒逻辑。
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
 		ALLOW TO REDISTRIBUTE IT AND/OR MODIFY IT FOR 
@@ -73,6 +73,10 @@ void setup() {
 	// }
 
 	/* 开启看门狗，8秒无响应后重启机器 */
+	do{
+		state = (digitalRead(BUTTONA) << 1) | digitalRead(BUTTONB);
+		delay(100);
+	}while(state == 0);
 	wdt_enable(WDTO_8S);
 	randomSeed(RTC.now().unixtime());
 	startingEffect(); //展示开机效果
@@ -87,7 +91,6 @@ void loop(){
 	funcList[state]();
 	if(isOverTime())	//是否已经到刷新时间
 		refreshNixie();
-	
 }
 
 /* 取位操作，最多八位 */
@@ -177,7 +180,7 @@ void refreshNixie(){
 		2.同时轮转所有的辉光管
 	*/
 	simulateFlash(0x3F,0); //闪烁所有辉光管
-	roundNixie(0x3F,2); //轮转所有的辉光管，2圈。
+	roundNixie(0x3F,6); //轮转所有的辉光管，6圈。
 	//更新下次刷新时间
 	NextRefreshTime = RTC.now() + TimeSpan(__OVER_TIME__);
 }
