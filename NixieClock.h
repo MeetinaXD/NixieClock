@@ -92,6 +92,15 @@ void readFromRTC_Module();		//从RTC时间模块中读出时间
 // ******** definition for constant values ********
 const uint32_t powList[] = {1,10,100,1000,10000,100000};
 const byte movList[8] = {1,2,4,8,16,32,64,128};
+const byte pointList[6] = {1,2,4,6,8,9};
+	/*
+		一个数字时，点亮第二个辉光管的右小数点
+		两个数字时，点亮第三个辉光管的左小数点
+		三个数字时，点亮第四个辉光管的左小数点
+		四个数字时，点亮第五个辉光管的左小数点（希望可以到四位数吧）
+		五个数字时，点亮第六个辉光管的左小数点
+		六个数字时，点亮第六个辉光管的右小数点
+	*/
 const byte SHCP[3] = {SHCPA,SHCPB,SHCPC};
 const byte DS[3] = {DSA,DSB,DSC};
 const byte MR[3] = {MRA,MRB,MRC};

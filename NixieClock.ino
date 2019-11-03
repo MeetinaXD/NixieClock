@@ -310,8 +310,10 @@ void showCounter(){
 	uint32_t days = gap.days();
 	byte days_len = 0;
 	byte NixieTube = 0;
-	for (uint32_t i = days; i > 0;i /= 10,days_len++);
+	byte pointPos = 0;
 	if (state != old_state){//状态被改变，需要先显示日
+		for (uint32_t i = days; i > 0;i /= 10,days_len++);
+		pointPos = pointList[days_len - 1];
 		old_state = state;
 		for (byte i = 0; i < 6; i++){//关闭所有辉光管
 			closeDownNixie(i);
