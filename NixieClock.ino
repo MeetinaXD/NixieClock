@@ -7,6 +7,8 @@
 					* Octo 27,20:09, 增加防中毒和看门狗功能 
 					* Octo 31,14:28, 修改isOverTime中的错误；更改喂狗次序，修复一开机为功能3时导致重启的问题
 					* Nove 2 ,18:15, 修改了开始动画的逻辑，必须选择功能后才出现，修改了防中毒逻辑。
+					* Nove 3 ,--:--, 修复当显示的纪念日正计时不为三位数时，小数点可能不会正确显示的问题。
+									 现在纪念日，日数小数点的位置不再被固定在第三位，根据数字长度自动显示在后面。 
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
 		ALLOW TO REDISTRIBUTE IT AND/OR MODIFY IT FOR 
