@@ -1,7 +1,7 @@
 /*
 	Author 		: 	MeetinaXD
 					(meetinaxd@ltiex.com)
-	Last Edit 	: 	Octo 27,2019. 20:09 (UTC + 08)
+	Last Edit 	: 	Nove 05,2019. 21:09 (UTC + 08)
 	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
 	Modify Logs	:	
 					* Octo 27,20:09, 增加防中毒和看门狗功能
@@ -9,6 +9,13 @@
 					* Nove 2 ,18:15, 修改了开始动画的逻辑，必须选择功能后才出现，修改了防中毒逻辑。
 					* Nove 3 ,--:--, 修复当显示的纪念日正计时不为三位数时，小数点可能不会正确显示的问题。
 									 现在纪念日，日数小数点的位置不再被固定在第三位，根据数字长度自动显示在后面。
+					* Nove 5 ,21:06, 删除了refresh方法，合并到sendData中
+									 buildDate不再指定，使用__DATE__宏定义
+									 不再使用bits数组储存数字，使用NixieTube结构体，方便控制灯的开关
+									 规范数字赋值，统一使用setNixie()方法设置数字
+									 新增getNixie获取当前辉光管的数字，不允许直接访问变量
+									 修复BUG：灯关闭时不进行辉光管刷新
+
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
 		ALLOW TO REDISTRIBUTE IT AND/OR MODIFY IT FOR 
@@ -36,6 +43,9 @@
 
 //定义辉光钟防中毒的刷新时间，单位为秒
 #define __OVER_TIME__ 300 //五分钟刷新一次
+
+#define NIXIE_CLOSED false //辉光管关闭状态
+#define NIXIE_OPENED true //辉光管开启状态
 
 // ******** definition for 74HC595N tube ********
 #define DSA 5
@@ -80,11 +90,11 @@ bool isOverTime();		//判断是否已经超时
 void refreshNixie();	//刷新所有辉光管(防止辉光管中毒)
 
 void sendData();		//发送数据到74HC595N译码器
-void refresh();			//74HC595N译码器STCP引脚上升沿，输出使能
 
 void lightUpNixie(byte i);			//打开辉光管，使其可以被设置
 void closeDownNixie(byte i);		//关闭辉光管，使其不能被设置
 void setNixie(byte i,byte number);  //设置辉光管显示的数字
+byte getNixie(byte i);				//获取某位辉光管显示的数字
 void lightUpPoint(byte i);			//打开小数点
 void closeDownPoint();				//关闭小数点
 
@@ -107,7 +117,6 @@ const byte SHCP[3] = {SHCPA,SHCPB,SHCPC};
 const byte DS[3] = {DSA,DSB,DSC};
 const byte MR[3] = {MRA,MRB,MRC};
 
-const byte buildDate[6] = {1,9,1,0,2,5};
 const byte LoveDate[6] = {1,9,0,3,1,4};
 const byte simulateTime[2][10] = {
 									{150,200,90,100,40,60,20,20,10,10},
@@ -118,4 +127,10 @@ const byte simulateTime[2][10] = {
 									*/
 // const DateTime LoveDateTime (2019,3,14,17,43,00);								
 const DateTime LoveDateTime (2019,1,14,18,35,00);
+
+typedef struct _NixieTube{	//辉光管结构体
+	bool state;
+	byte number;
+}NixieTube;
+
 #endif/* __NIXCK__HEADER__ */

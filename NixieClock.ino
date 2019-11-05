@@ -1,7 +1,7 @@
 /*
 	Author 		: 	MeetinaXD
 					(meetinaxd@ltiex.com)
-	Last Edit 	: 	Octo 27,2019. 20:09 (UTC + 08)
+	Last Edit 	: 	Nove 05,2019. 21:09 (UTC + 08)
 	Program 	:	NixieClock Control Unit (ATMega 328p-u in Arduino)
 	Modify Logs	:	
 					* Octo 27,20:09, 增加防中毒和看门狗功能 
@@ -9,6 +9,13 @@
 					* Nove 2 ,18:15, 修改了开始动画的逻辑，必须选择功能后才出现，修改了防中毒逻辑。
 					* Nove 3 ,--:--, 修复当显示的纪念日正计时不为三位数时，小数点可能不会正确显示的问题。
 									 现在纪念日，日数小数点的位置不再被固定在第三位，根据数字长度自动显示在后面。 
+					* Nove 5 ,21:06, 删除了refresh方法，合并到sendData中
+									 buildDate不再指定，使用__DATE__宏定义
+									 不再使用bits数组储存数字，使用NixieTube结构体，方便控制灯的开关
+									 规范数字赋值，统一使用setNixie()方法设置数字
+									 新增getNixie获取当前辉光管的数字，不允许直接访问变量
+									 修复BUG：灯关闭时不进行辉光管刷新
+
 	WARNING:
 		THIS PROGRAM IS NOT A FREE SOFTWARE, YOU ARE NOT
 		ALLOW TO REDISTRIBUTE IT AND/OR MODIFY IT FOR 
@@ -27,6 +34,7 @@
 
 RTC_DS1307 RTC; //时钟模块
 
+NixieTube tube[6];
 byte bits[6] = {0,0,0,0,0,0};//当前数字位
 byte old_bits[6] = {0,0,0,0,0,0};//上一个数字位
 byte Data[3] = {69,69,69};//45 45 45
@@ -52,14 +60,18 @@ void setup() {
 	pinMode(BUTTONA,INPUT);
 	pinMode(BUTTONB,INPUT);
 
-	for (byte i = 0;i < 3;i++){
+	for (byte i = 0; i < 3; i++){
 		pinMode(DS[i],OUTPUT);
 		digitalWrite(DS[i],LOW);
 		pinMode(MR[i],OUTPUT);
 		digitalWrite(MR[i],LOW);
 		digitalWrite(MR[i],HIGH);
 		pinMode(SHCP[i],OUTPUT);
-	}	
+	}
+	for (int i = 0; i < 6; i++){
+		tube[i].state = NIXIE_OPENED;
+		tube[i].number = 0;
+	}
 	pinMode(STCP,OUTPUT);
 	digitalWrite(STCP,LOW);
 
@@ -91,7 +103,7 @@ void loop(){
 	wdt_reset();//记得喂狗
 	state = (digitalRead(BUTTONA) << 1) | digitalRead(BUTTONB);
 	funcList[state]();
-	if(isOverTime())	//是否已经到刷新时间
+	if(isOverTime() && state != 0)	//是否已经到刷新时间，并且灯没有被关闭
 		refreshNixie();
 }
 
@@ -104,21 +116,28 @@ byte getBit(byte number,byte pos){
 /* 设置辉光管显示的数字 */
 
 void setNixie(byte i,byte number){
-	if(bits[i] != 0xFF)
-		bits[i] = number & 0xF;
+	if(tube[i].state != NIXIE_CLOSED)
+		tube[i].number = number & 0xF;
+}
+
+/* 获取某位辉光管显示的数字 */
+
+byte getNixie(byte i){
+	if (tube[i].state = NIXIE_CLOSED)
+		return -1;
+	return tube[i].number;
 }
 
 /* 开启辉光管显示，参数：辉光管编号，注意开启后辉光管仍然无显示 */
 
 void lightUpNixie(byte i){
-	if (bits[i] == 0xF)
-		bits[i] = 0xE;
+	tube[i].state = NIXIE_OPENED;
 }
 
 /* 关闭辉光管显示，参数：辉光管编号 */
 
 void closeDownNixie(byte i){
-	bits[i] = 0xB;
+	tube[i].state = NIXIE_CLOSED;
 }
 
 /* 点亮小数点 */
@@ -137,20 +156,12 @@ void closeDownPoint(){
 	PORTC |= 0xF;
 }
 
-
-/* 74HC595N译码器输出引脚使能 */
-
-void refresh(){
-	digitalWrite(STCP,LOW);
-	digitalWrite(STCP,HIGH);//上升沿
-}
-
 /* 发送数据到74HC595N译码器 */
 
 void sendData(){
-	Data[0] = bits[0] << 4 | bits[1];
-	Data[1] = bits[2] << 4 | bits[3];
-	Data[2] = bits[4] << 4 | bits[5];
+	Data[0] = getNixie(0) << 4 | getNixie(1);
+	Data[1] = getNixie(2) << 4 | getNixie(3);
+	Data[2] = getNixie(4) << 4 | getNixie(5);
 	byte s = 69;
 	for (byte k = 0;k < 3;k++){
 		byte v = 0;
@@ -161,7 +172,10 @@ void sendData(){
 			digitalWrite(SHCP[k],HIGH);
 		}
 	}
-	refresh();
+
+	/* 74HC595N译码器输出引脚使能 */
+	digitalWrite(STCP,LOW);
+	digitalWrite(STCP,HIGH);//上升沿
 }
 
 /* 是否已经超时 */
@@ -202,7 +216,6 @@ void showWorldChange(){
 			closeDownNixie(i);
 		}
 		sendData();
-		refresh();
 		change = true;
 	}
 	//世界线变动
@@ -237,16 +250,14 @@ void showWorldChange(){
 	if (random(1,64) == 6){//世界线不稳定
 		for (int i = 0; i < 6; i++){
 			old_bits[i] = bits[i];
-			bits[i] = random(0,9)&0xF;
+			setNixie(i,random(0,9)&0xF);
 		}
 		lightUpPoint(0);
 		sendData();
-		refresh();
 		delay(random(800,3000));
 		for (int i = 0; i < 6; i++)
-			bits[i] = old_bits[i];
+			setNixie(i,old_bits[i]);
 		sendData();
-		refresh();
 	}
 
 	{//什么都没有发生的时候
@@ -266,7 +277,6 @@ void showNothing(){
 		for (int i = 0; i < 6; i++)
 			closeDownNixie(i);
 		sendData();
-		refresh();
 	}
 	delay(40);
 }
@@ -277,24 +287,22 @@ void showTime(){
 	old_state = state;
 	byte NixieTube = 0;
 	readFromRTC_Module();
-	bits[0] = Date[3] / 10;
-	bits[1] = Date[3] % 10;
-	bits[2] = Date[4] / 10;
-	bits[3] = Date[4] % 10;
-	bits[4] = Date[5] / 10;
-	bits[5] = Date[5] % 10;
+	setNixie(0,Date[3] / 10);
+	setNixie(1,Date[3] % 10);
+	setNixie(2,Date[4] / 10);
+	setNixie(3,Date[4] % 10);
+	setNixie(4,Date[5] / 10);
+	setNixie(5,Date[5] % 10);
 	for (byte i = 0; i < 6; i++){
-		if(old_bits[i] != bits[i]){
+		if(old_bits[i] != getNixie(i)){
 			NixieTube |= 1 << i;
-			old_bits[i] = bits[i];
+			old_bits[i] = getNixie(i);
 		}
 	}
 	sendData();
-	refresh();
 	if(NixieTube != 0){//时间发生改变
 		roundNixie(NixieTube,1);
 		sendData();	//发送各辉光管数据到74HC595N译码器中
-		refresh();	//译码器使能
 	}
 	delay(40);//下次检测时间变动的间隔
 }
@@ -321,7 +329,6 @@ void showCounter(){
 			closeDownNixie(i);
 		}
 		sendData();
-		refresh();
 		for (byte i = 0; i < days_len; i++){
 			NixieTube = 1 << i;
 			lightUpNixie(i);
@@ -339,22 +346,23 @@ void showCounter(){
 			delay(100);
 		}
 	}
-	setNixie(0,gap.hours() / 10);
-	setNixie(1,gap.hours() % 10);
+
+	setNixie(0,gap.hours()	 / 10);
+	setNixie(1,gap.hours()	 % 10);
 	setNixie(2,gap.minutes() / 10);
 	setNixie(3,gap.minutes() % 10);
 	setNixie(4,gap.seconds() / 10);
 	setNixie(5,gap.seconds() % 10);
+
 	for (byte i = 0; i < 6; i++){
-		if(old_bits[i] != bits[i]){
+		if(old_bits[i] != getNixie(i)){
 			NixieTube |= 1 << i;
-			old_bits[i] = bits[i];
+			old_bits[i] = getNixie(i);
 		}
 	}
 	if(NixieTube != 0){//时间还没有发生改变
 		roundNixie(NixieTube,1);
 		sendData();	//发送各辉光管数据到74HC595N译码器中
-		refresh();	//译码器使能
 	}
 	delay(40);//下次检测时间变动的间隔
 }
@@ -370,33 +378,46 @@ void readFromRTC_Module(){
 	Date[4] = now.minute();
 	Date[5] = now.second();
 }
+
+/* 统计byte里面1出现的次数 */
+
 byte oneInByte(byte x){
 	byte sum = 0;
 	for (byte i = 0; i < 8; i++)
 		sum += (x & (1<<i)) > 0 ? 1 : 0;
 	return sum;
 }
+
+/* 取出一个数里面的某一个数 */
+
 byte getNumber(uint32_t number,byte i,byte length){
 	if(i < 0 || i > length) return -1;
 	number /= powList[length - i];
 	number %= 10;
 	return number;
 }
+
 /* 通电后效果 */
 
 void startingEffect(){
-	
 	/* 首先全黑，然后全部一个个跑马灯 */
+	DataTime buildDate = DateTime(__DATE__, __TIME__);
+	byte _date[6];
+	_date[0] = getNumber(buildDate.year() - 2000,1,2);
+	_date[1] = getNumber(buildDate.year() - 2000,2,2);
+	_date[2] = getNumber(buildDate.month(),1,2);
+	_date[3] = getNumber(buildDate.month(),2,2);
+	_date[4] = getNumber(buildDate.day(),1,2);
+	_date[5] = getNumber(buildDate.day(),2,2);
 	byte NixieTube = 0;
 	for (byte i = 0; i < 6; i++){
 		closeDownNixie(i);
 	}
 	sendData();
-	refresh();
 	/* 模拟荧光灯闪烁 */
 	for (byte i = 0; i < 6; i++){
 		// lightUpNixie(i);
-		setNixie(i,buildDate[i]);
+		setNixie(i,_date[i]);
 		simulateFlash(1<<i,0);
 	}
 	delay(1000);
@@ -410,14 +431,15 @@ void startingEffect(){
 	}
 	delay(500);
 }
+
 void roundNixie(byte NixieTube,byte round){
 	for (byte i = 0; i < round * 10; i++){
 		for (byte j = 0; j < 6; j++){
 			if((NixieTube & (1<<j)) == 0) continue;
-			if(++bits[j] == 10) bits[j] = 0;
+			setNixie(j,getNixie(j) + 1);
+			if(getNixie(j) == 10) setNixie(j,0);
 		}
 		sendData();
-		refresh();
 		delay(5);
 	}
 }
@@ -426,14 +448,13 @@ void roundNixie(byte NixieTube,byte round){
 
 void simulateFlash(byte NixieTube,byte level){
 	for (int i = 0; i < 6; i++)
-		old_bits[i] = bits[i];
+		old_bits[i] = getNixie(i);
 	for (byte i = 0; i < 5; i++){
 		for (byte j = 0; j < 6; j++){
 			if((NixieTube & (1<<j)) == 0) continue;
 			closeDownNixie(j);
 		}
 		sendData();
-		refresh();
 		delay(simulateTime[level][i*2]);
 		for (byte j = 0; j < 6; j++){
 			if((NixieTube & (1<<j)) == 0) continue;
@@ -441,7 +462,6 @@ void simulateFlash(byte NixieTube,byte level){
 			setNixie(j,old_bits[j]);
 		}
 		sendData();
-		refresh();
 		delay(simulateTime[level][i*2 + 1]);
 	}
 	for (byte j = 0; j < 8; j++){
@@ -450,7 +470,6 @@ void simulateFlash(byte NixieTube,byte level){
 		setNixie(j,old_bits[j]);
 	}
 	sendData();
-	refresh();
 }
 /*
 	跑马灯
