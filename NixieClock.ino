@@ -65,8 +65,8 @@ void setup() {
 	Wire.begin();
 	RTC.begin();
 
-	pinMode(BUTTONA,INPUT);
-	pinMode(BUTTONB,INPUT);
+	pinMode(BUTTONA,INPUT_PULLUP);
+	pinMode(BUTTONB,INPUT_PULLUP);
 
 	for (byte i = 0;i < 3;i++){
 		pinMode(DS[i],OUTPUT);
@@ -107,7 +107,7 @@ void loop(){
 	wdt_reset();//记得喂狗
 	state = (digitalRead(BUTTONA) << 1) | digitalRead(BUTTONB);
 	funcList[state]();
-	if(isOverTime())	//是否已经到刷新时间
+	if(isOverTime() && state != 0)	//是否已经到刷新时间
 		refreshNixie();
 }
 

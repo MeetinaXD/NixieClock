@@ -123,7 +123,7 @@ const byte SHCP[3] = {SHCPA,SHCPB,SHCPC};
 const byte DS[3] = {DSA,DSB,DSC};
 const byte MR[3] = {MRA,MRB,MRC};
 
-const byte buildDate[6] = {1,9,1,0,2,5};
+const byte buildDate[6] = {1,9,1,1,0,6};
 const byte LoveDate[6] = {1,9,0,3,1,4};
 const byte simulateTime[2][10] = {
 									{150,200,90,100,40,60,20,20,10,10},
