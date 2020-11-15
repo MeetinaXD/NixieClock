@@ -18,4 +18,7 @@
  程序不会再更新，第二天就把辉光钟送给她。
  所以更新程序没有意义，就像这些内容她永远不会看见。
 
+ Nove 15, 2020 Update:
+   Nixie Clock Online: [辉光钟在线版本](https://meetinaxd.github.io/)
+
  I'll always love you.
