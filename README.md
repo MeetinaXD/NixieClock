@@ -20,5 +20,10 @@
 
  Nove 15, 2020 Update:
    Nixie Clock Online: [辉光钟在线版本](https://meetinaxd.github.io/)
+   
+   如果上面的链接无法打开，可以尝试以下地址：
+   
+   [Nixie Clock Standalone](https://www.ltiex.com/NixieClock/)
+
 
  I'll always love you.
